@@ -1,0 +1,130 @@
+[
+  {
+    "name": "clean_document",
+    "input_file": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_inputs\\clean_document.png",
+    "returncode": 0,
+    "stdout": "Stub response",
+    "stderr": "",
+    "log_entry": {
+      "timestamp": "2026-04-15T07:36:27.531059+00:00",
+      "event": "interaction",
+      "provider": "stub",
+      "model": "stub-model",
+      "request": {
+        "input": "Invoice 2048\n\nCustomer: Maxwell Li\n\nOrder Total: 123.45 USD\n\nDue Date: 2026-04-30\n\nPlease process payment today.",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a production-grade workflow assistant. Respond clearly, structure the answer for real operational use, and call out risks or next actions when helpful."
+          },
+          {
+            "role": "user",
+            "content": "Invoice 2048\n\nCustomer: Maxwell Li\n\nOrder Total: 123.45 USD\n\nDue Date: 2026-04-30\n\nPlease process payment today."
+          }
+        ]
+      },
+      "response": {
+        "content": "Stub response",
+        "finish_reason": "stop",
+        "usage": null
+      },
+      "input_metadata": {
+        "context": "document",
+        "route_taken": "use_ocr",
+        "routing_reason": "acceptable_ocr_lower_cost",
+        "ocr_score": 0.96,
+        "ocr_acceptability": "acceptable",
+        "ocr_reasons": [],
+        "cost_justification": "prefer_lower_cost_path"
+      }
+    }
+  },
+  {
+    "name": "noisy_scan",
+    "input_file": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_inputs\\noisy_scan.png",
+    "returncode": 0,
+    "stdout": "Stub response",
+    "stderr": "",
+    "log_entry": {
+      "timestamp": "2026-04-15T07:36:28.777121+00:00",
+      "event": "interaction",
+      "provider": "stub",
+      "model": "stub-model",
+      "request": {
+        "input": "Scanned Notice\n\nReference ID: ZX-17-204\nPartial text may be degraded\nReview manually if uncertain",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a production-grade workflow assistant. Respond clearly, structure the answer for real operational use, and call out risks or next actions when helpful."
+          },
+          {
+            "role": "user",
+            "content": "Scanned Notice\n\nReference ID: ZX-17-204\nPartial text may be degraded\nReview manually if uncertain"
+          }
+        ]
+      },
+      "response": {
+        "content": "Stub response",
+        "finish_reason": "stop",
+        "usage": null
+      },
+      "input_metadata": {
+        "context": "document",
+        "route_taken": "use_ocr",
+        "routing_reason": "acceptable_ocr_lower_cost",
+        "ocr_score": 0.95,
+        "ocr_acceptability": "acceptable",
+        "ocr_reasons": [],
+        "cost_justification": "prefer_lower_cost_path"
+      }
+    }
+  },
+  {
+    "name": "short_ui_text",
+    "input_file": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_inputs\\short_ui_text.png",
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\cli.py\", line 63, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\cli.py\", line 43, in main\n    result = runtime.runner.run_reply(\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\session_runner.py\", line 47, in run_reply\n    raw_text = self._resolve_reply_text(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\session_runner.py\", line 90, in _resolve_reply_text\n    return self._read_from_source(self.file_source_factory(request.input_file))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\session_runner.py\", line 96, in _read_from_source\n    text = source.read()\n           ^^^^^^^^^^^^^\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\input_adapters.py\", line 61, in read\n    processed = self.processor.process(\n                ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\multimodal.py\", line 243, in process\n    raise MultimodalProcessingError(decision.reason)\nlocal_ai_agent.multimodal.MultimodalProcessingError: vision_required_but_unavailable",
+    "log_entry": null
+  },
+  {
+    "name": "code_like",
+    "input_file": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_inputs\\code_like.png",
+    "returncode": 0,
+    "stdout": "Stub response",
+    "stderr": "",
+    "log_entry": {
+      "timestamp": "2026-04-15T07:36:31.348369+00:00",
+      "event": "interaction",
+      "provider": "stub",
+      "model": "stub-model",
+      "request": {
+        "input": "def build_payload(user_id: str) -> dict[str, object]:\nreturn {\"id\": user_id, \u201cok\u201d: True, \u201citems\u201d: [1, 2, 3]}\n\nif result.get(\"ok\") and len(items) >= 3:\nprint(#\"done: :{user_id}\")",
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a production-grade workflow assistant. Respond clearly, structure the answer for real operational use, and call out risks or next actions when helpful."
+          },
+          {
+            "role": "user",
+            "content": "def build_payload(user_id: str) -> dict[str, object]:\nreturn {\"id\": user_id, \u201cok\u201d: True, \u201citems\u201d: [1, 2, 3]}\n\nif result.get(\"ok\") and len(items) >= 3:\nprint(#\"done: :{user_id}\")"
+          }
+        ]
+      },
+      "response": {
+        "content": "Stub response",
+        "finish_reason": "stop",
+        "usage": null
+      },
+      "input_metadata": {
+        "context": "document",
+        "route_taken": "use_ocr",
+        "routing_reason": "acceptable_ocr_lower_cost",
+        "ocr_score": 0.82,
+        "ocr_acceptability": "acceptable",
+        "ocr_reasons": [],
+        "cost_justification": "prefer_lower_cost_path"
+      }
+    }
+  }
+]

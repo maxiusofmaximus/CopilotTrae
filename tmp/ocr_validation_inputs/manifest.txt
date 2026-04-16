@@ -1,0 +1,4 @@
+tmp\ocr_validation_inputs\clean_document.png
+tmp\ocr_validation_inputs\noisy_scan.png
+tmp\ocr_validation_inputs\short_ui_text.png
+tmp\ocr_validation_inputs\code_like.png

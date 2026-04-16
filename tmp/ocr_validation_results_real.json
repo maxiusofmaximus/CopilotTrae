@@ -1,0 +1,42 @@
+[
+  {
+    "name": "clean_document",
+    "input_file": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_inputs\\clean_document.png",
+    "returncode": 0,
+    "cli_output": "Stub response\r\n",
+    "log_path": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_logs_real\\ocr-validation-clean_document.jsonl",
+    "log_raw": "}"
+  },
+  {
+    "name": "noisy_scan",
+    "input_file": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_inputs\\noisy_scan.png",
+    "returncode": 0,
+    "cli_output": "Stub response\r\n",
+    "log_path": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_logs_real\\ocr-validation-noisy_scan.jsonl",
+    "log_raw": "}"
+  },
+  {
+    "name": "short_ui_text",
+    "input_file": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_inputs\\short_ui_text.png",
+    "returncode": 1,
+    "cli_output": "Traceback (most recent call last):\r\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\r\n  File \"<frozen runpy>\", line 88, in _run_code\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\cli.py\", line 63, in <module>\r\n    raise SystemExit(main())\r\n                     ~~~~^^\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\cli.py\", line 43, in main\r\n    result = runtime.runner.run_reply(\r\n        ReplyRequest(\r\n    ...<4 lines>...\r\n        )\r\n    )\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\session_runner.py\", line 49, in run_reply\r\n    raw_text = self._resolve_reply_text(request)\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\session_runner.py\", line 95, in _resolve_reply_text\r\n    return self._read_from_source(self.file_source_factory(request.input_file))\r\n           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\session_runner.py\", line 101, in _read_from_source\r\n    text = source.read()\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\input_adapters.py\", line 62, in read\r\n    processed = self.processor.process(\r\n        self.path,\r\n        context=self.default_context,\r\n        profile=self.routing_profile,\r\n    )\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\multimodal.py\", line 259, in process\r\n    raise MultimodalProcessingError(decision.reason, metadata=metadata)\r\nlocal_ai_agent.multimodal.MultimodalProcessingError: vision_required_but_unavailable\r\n",
+    "log_path": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_logs_real\\ocr-validation-short_ui_text.jsonl",
+    "log_raw": "}"
+  },
+  {
+    "name": "code_like",
+    "input_file": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_inputs\\code_like.png",
+    "returncode": 0,
+    "cli_output": "Stub response\r\n",
+    "log_path": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_logs_real\\ocr-validation-code_like.jsonl",
+    "log_raw": "}"
+  },
+  {
+    "name": "noisy_scan_heavy",
+    "input_file": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_inputs\\noisy_scan_heavy.png",
+    "returncode": 1,
+    "cli_output": "Traceback (most recent call last):\r\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\r\n  File \"<frozen runpy>\", line 88, in _run_code\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\cli.py\", line 63, in <module>\r\n    raise SystemExit(main())\r\n                     ~~~~^^\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\cli.py\", line 43, in main\r\n    result = runtime.runner.run_reply(\r\n        ReplyRequest(\r\n    ...<4 lines>...\r\n        )\r\n    )\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\session_runner.py\", line 49, in run_reply\r\n    raw_text = self._resolve_reply_text(request)\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\session_runner.py\", line 95, in _resolve_reply_text\r\n    return self._read_from_source(self.file_source_factory(request.input_file))\r\n           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\session_runner.py\", line 101, in _read_from_source\r\n    text = source.read()\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\input_adapters.py\", line 62, in read\r\n    processed = self.processor.process(\r\n        self.path,\r\n        context=self.default_context,\r\n        profile=self.routing_profile,\r\n    )\r\n  File \"C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\src\\local_ai_agent\\multimodal.py\", line 259, in process\r\n    raise MultimodalProcessingError(decision.reason, metadata=metadata)\r\nlocal_ai_agent.multimodal.MultimodalProcessingError: vision_required_but_unavailable\r\n",
+    "log_path": "C:\\Users\\maxli\\OneDrive\\Documentos\\Projects\\CopilotTrae\\tmp\\ocr_validation_logs_real\\ocr-validation-noisy_scan_heavy.jsonl",
+    "log_raw": "}"
+  }
+]

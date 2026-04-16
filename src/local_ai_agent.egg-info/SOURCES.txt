@@ -1,0 +1,8 @@
+pyproject.toml
+src/local_ai_agent.egg-info/PKG-INFO
+src/local_ai_agent.egg-info/SOURCES.txt
+src/local_ai_agent.egg-info/dependency_links.txt
+src/local_ai_agent.egg-info/entry_points.txt
+src/local_ai_agent.egg-info/requires.txt
+src/local_ai_agent.egg-info/top_level.txt
+tests/test_smoke.py
