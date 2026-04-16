@@ -644,6 +644,7 @@ git commit -m "docs: verify router invariants and record migration path"
 - The definitive product stack is already agreed as `Rust + TypeScript + Tauri`.
 - That migration is a later phase after the Python middleware is complete, tested, and behaviorally stable.
 - This migration is recorded here to prevent reopening the language/runtime discussion during Python implementation tasks.
+- That future migration is a closed later phase, not an open decision within the current Python middleware plan.
 
 ## Suggested Execution Order
 

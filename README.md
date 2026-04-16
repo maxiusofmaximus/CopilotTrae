@@ -100,6 +100,47 @@ local-ai-agent chat --show-memory
 
 Exit the interactive session with `/exit` or `/quit`.
 
+### Route Middleware Mode
+
+The `route` command is the deterministic middleware surface for terminal routing. It does not execute commands, install tools, or mutate registries. It only builds a `TerminalRequest`, calls a bound router runtime, and emits the resulting envelope as JSON to `stdout`.
+
+Example invocation shape:
+
+```bash
+local-ai-agent route --text "gh --version" --shell powershell --cwd C:\repo --snapshot-version snap-1
+```
+
+Output contract:
+
+- `stdout` contains JSON only
+- no debug prints
+- no human-oriented prose
+- no command execution side effects
+
+Current integration note:
+
+- the host binds the snapshot and `router_runtime` externally before invoking `route`
+- `route` is intentionally not allowed to construct or select snapshots on its own
+
+## Deterministic Middleware Boundaries
+
+Purpose:
+
+- classify terminal input into a JSON-only routing envelope
+- preserve deterministic resolution against a bound snapshot
+- hand off execution decisions to the host terminal layer
+
+Non-goals:
+
+- executing subprocesses from the router or CLI `route` path
+- installing packages or changing registries from the router runtime
+- importing execution logic from external reference repositories
+
+Reference-repo policy:
+
+- repositories such as `Claudia`, `DEV-OS`, `AsistenteW11`, and `AsistHub` are references for behavior and constraints only
+- this repository does not embed or delegate execution to those projects
+
 ## Logs
 
 Every interaction is written to a session JSONL file under `logs/` by default.
@@ -140,3 +181,9 @@ Each record includes:
 - Add provider fallback routing above the `LLMClient` layer
 - Add persistent conversation sessions
 - Add guarded automation adapters for Playwright, AutoHotkey, or `pyautogui`
+
+## Future Migration
+
+- `Python` is the active implementation stack for the current middleware phases
+- `Rust + TypeScript + Tauri` is the agreed definitive stack after Python behavior is fully validated
+- that migration is a later closed phase, not an open design question during the current plan
