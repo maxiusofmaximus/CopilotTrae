@@ -46,3 +46,9 @@ class ConfirmationPolicy(Protocol):
 class ClipboardSink(Protocol):
     def copy(self, text: str) -> None:
         ...
+
+
+@runtime_checkable
+class RouterEventSink(Protocol):
+    def emit(self, event: object) -> None:
+        ...

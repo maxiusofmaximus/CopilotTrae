@@ -7,6 +7,8 @@ from typing import Callable
 
 from local_ai_agent.contracts import ClipboardSink, ConfirmationPolicy, InputSource, OutputSink
 from local_ai_agent.multimodal import MultimodalProcessingError
+from local_ai_agent.router.errors import RouterErrorEnvelope
+from local_ai_agent.router.output import RouteEnvelope
 
 
 @dataclass(slots=True)
@@ -22,6 +24,31 @@ class ReplyRequest:
 class SessionResult:
     exit_code: int
     log_path: Path | None = None
+
+
+def serialize_router_envelope(envelope: RouteEnvelope | RouterErrorEnvelope) -> dict[str, object]:
+    if isinstance(envelope, RouterErrorEnvelope):
+        return {
+            "kind": envelope.kind,
+            "snapshot_version": envelope.snapshot_version,
+            "error_code": envelope.error_code,
+            "request_id": envelope.request_id,
+            "session_id": envelope.session_id,
+            "diagnostics": dict(envelope.diagnostics),
+        }
+
+    return {
+        "kind": envelope.kind,
+        "snapshot_version": envelope.snapshot_version,
+        "route": envelope.route,
+        "intent": envelope.intent,
+        "payload": envelope.payload,
+        "evidence": envelope.evidence,
+        "confidence": envelope.confidence,
+        "threshold_applied": envelope.threshold_applied,
+        "threshold_source": envelope.threshold_source,
+        "resolver_path": envelope.resolver_path,
+    }
 
 
 class AgentSessionRunner:

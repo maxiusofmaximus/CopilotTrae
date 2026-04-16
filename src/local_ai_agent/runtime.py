@@ -7,7 +7,7 @@ from typing import TextIO
 
 from local_ai_agent.agent import AgentController
 from local_ai_agent.config import Settings
-from local_ai_agent.contracts import MemoryStore, OutputSink
+from local_ai_agent.contracts import MemoryStore, OutputSink, RouterEventSink
 from local_ai_agent.input_adapters import MultimodalFileInputSource, PromptedLineInputSource, StreamInputSource
 from local_ai_agent.logging_utils import InteractionLogger
 from local_ai_agent.memory import ConversationMemory, PersistentConversationMemory
@@ -15,7 +15,18 @@ from local_ai_agent.multimodal import InputRoutingPolicy, MultimodalInputProcess
 from local_ai_agent.ocr_extractors import TesseractOCRExtractor
 from local_ai_agent.output_adapters import ConsoleOutputSink, StreamConfirmationPolicy, TkClipboardSink
 from local_ai_agent.providers import build_provider
-from local_ai_agent.session_runner import AgentSessionRunner
+from local_ai_agent.router.errors import RouterErrorEnvelope
+from local_ai_agent.router.events import (
+    RouterErrorEmitted,
+    RouterIntentClassified,
+    RouterRequestReceived,
+    RouterRouteEmitted,
+    RouterSnapshotBound,
+)
+from local_ai_agent.router.output import RouteEnvelope
+from local_ai_agent.router.request import TerminalRequest
+from local_ai_agent.router.snapshot import RegistrySnapshot
+from local_ai_agent.session_runner import AgentSessionRunner, serialize_router_envelope
 
 LOGGER = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -25,6 +36,66 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 class AppRuntime:
     runner: AgentSessionRunner
     output: OutputSink
+    router_runtime: object | None = None
+
+
+@dataclass(slots=True)
+class RouterRuntime:
+    router: object
+    snapshot: RegistrySnapshot
+    event_sink: RouterEventSink
+
+    def resolve(self, request: TerminalRequest) -> RouteEnvelope | RouterErrorEnvelope:
+        self.event_sink.emit(
+            RouterRequestReceived(
+                request_id=request.request_id,
+                session_id=request.session_id,
+                request_snapshot_version=request.snapshot_version,
+                shell=request.shell,
+                raw_input=request.raw_input,
+            )
+        )
+        self.event_sink.emit(
+            RouterSnapshotBound(
+                request_id=request.request_id,
+                session_id=request.session_id,
+                snapshot_version=self.snapshot.snapshot_version,
+            )
+        )
+        result = self.router.resolve(request, self.snapshot)
+        if isinstance(result, RouterErrorEnvelope):
+            self.event_sink.emit(
+                RouterErrorEmitted(
+                    request_id=request.request_id,
+                    session_id=request.session_id,
+                    snapshot_version=result.snapshot_version,
+                    error_code=result.error_code,
+                    diagnostics=dict(result.diagnostics),
+                )
+            )
+            return result
+
+        self.event_sink.emit(
+            RouterIntentClassified(
+                request_id=request.request_id,
+                session_id=request.session_id,
+                snapshot_version=result.snapshot_version,
+                intent=result.intent,
+            )
+        )
+        self.event_sink.emit(
+            RouterRouteEmitted(
+                request_id=request.request_id,
+                session_id=request.session_id,
+                snapshot_version=result.snapshot_version,
+                route=result.route,
+                intent=result.intent,
+            )
+        )
+        return result
+
+    def resolve_serialized(self, request: TerminalRequest) -> dict[str, object]:
+        return serialize_router_envelope(self.resolve(request))
 
 
 def build_memory_store(settings: Settings) -> MemoryStore:
