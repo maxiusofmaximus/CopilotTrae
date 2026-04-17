@@ -4,7 +4,7 @@ import os
 from datetime import datetime, UTC
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are a production-grade workflow assistant. "
@@ -54,6 +54,12 @@ class Settings(BaseModel):
     logs_dir: Path = Field(default_factory=lambda: Path("logs"))
     session_id: str = Field(default_factory=_default_session_id)
     tesseract_command: str = "bin/tesseract/tesseract.exe"
+
+    @model_validator(mode="after")
+    def validate_provider_credentials(self) -> "Settings":
+        if self.provider not in {"stub", "failing-stub"} and not (self.api_key or "").strip():
+            raise ValueError("api_key is required for non-stub providers")
+        return self
 
     @classmethod
     def from_env(cls) -> "Settings":

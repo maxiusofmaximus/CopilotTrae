@@ -10,7 +10,7 @@ from local_ai_agent.memory import ConversationMemory, PersistentConversationMemo
 def test_runtime_builds_in_memory_store_by_default():
     from local_ai_agent.runtime import build_memory_store
 
-    settings = Settings()
+    settings = Settings(provider="stub")
 
     memory = build_memory_store(settings)
 
@@ -22,6 +22,7 @@ def test_runtime_builds_persistent_memory_store_when_enabled(tmp_path):
     from local_ai_agent.runtime import build_memory_store
 
     settings = Settings(
+        provider="stub",
         persistent_memory_enabled=True,
         memory_dir=tmp_path,
         session_id="session-123",
@@ -62,7 +63,7 @@ def test_runtime_builds_multimodal_processor_with_project_local_binary_and_logs_
     binary_path.parent.mkdir(parents=True)
     binary_path.write_text("fake-binary", encoding="utf-8")
 
-    settings = Settings(tesseract_command="bin/tesseract/tesseract.exe")
+    settings = Settings(provider="stub", tesseract_command="bin/tesseract/tesseract.exe")
 
     with caplog.at_level(logging.INFO):
         processor = build_multimodal_input_processor(settings, project_root=tmp_path)
@@ -77,6 +78,7 @@ def test_settings_from_env_reads_repo_local_dotenv_for_tesseract_command(tmp_pat
     (tmp_path / ".env").write_text("LOCAL_AI_AGENT_TESSERACT_COMMAND=bin/tesseract/tesseract.exe\n", encoding="utf-8")
     monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
     monkeypatch.delenv("LOCAL_AI_AGENT_TESSERACT_COMMAND", raising=False)
+    monkeypatch.setenv("LOCAL_AI_AGENT_PROVIDER", "stub")
 
     settings = config_module.Settings.from_env()
 
@@ -89,7 +91,7 @@ def test_runtime_fails_fast_when_configured_binary_is_not_project_local(tmp_path
 
     outside_binary = tmp_path.parent / "external-tesseract.exe"
     outside_binary.write_text("fake-binary", encoding="utf-8")
-    settings = Settings(tesseract_command=str(outside_binary))
+    settings = Settings(provider="stub", tesseract_command=str(outside_binary))
 
     with pytest.raises(OCRExtractionError, match="inside the project root"):
         build_multimodal_input_processor(settings, project_root=tmp_path)
