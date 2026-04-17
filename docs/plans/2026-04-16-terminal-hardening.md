@@ -108,3 +108,18 @@
 **Step 2: Run full suite**
 - Run: `pytest -q`
 - Expected: PASS
+
+## Plan Closure
+
+Status: closed
+
+Exit criteria satisfied:
+
+- full suite green with `pytest -q`
+- production smoke green with `pwsh -NoProfile -File .\scripts\smoke\production_readiness.ps1`
+- pilot checklist documented in `docs/runbooks/production-readiness.md`
+- `GO` / `NO-GO` gate documented with explicit `PASS` / `FAIL` criteria and closure template
+
+Operational result:
+
+- the production readiness path is complete and the Hub frontend can start from this baseline
