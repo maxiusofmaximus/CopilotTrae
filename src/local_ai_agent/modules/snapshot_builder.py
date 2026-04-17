@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import datetime, timezone
 from types import MappingProxyType
 
@@ -27,8 +29,15 @@ def build_registry_snapshot(
     tools = tool_registry.snapshot_tools()
     modules = module_registry.snapshot_modules()
     extensions = typed_empty_extensions()
+    snapshot_version = _stable_snapshot_version(
+        session_id=session_id,
+        tool_registry=tool_registry,
+        module_registry=module_registry,
+        tools=tools,
+        modules=modules,
+    )
     return RegistrySnapshot(
-        snapshot_version="generated",
+        snapshot_version=snapshot_version,
         built_at=datetime.now(timezone.utc).isoformat(),
         built_for_session=session_id,
         tools=tuple(tools),
@@ -42,3 +51,22 @@ def build_registry_snapshot(
         capability_surface=module_registry.snapshot_capabilities(),
         extensions=extensions,
     )
+
+
+def _stable_snapshot_version(
+    *,
+    session_id: str,
+    tool_registry: ToolRegistry,
+    module_registry: ModuleRegistry,
+    tools: list[dict[str, object]],
+    modules: list[dict[str, object]],
+) -> str:
+    payload = {
+        "session_id": session_id,
+        "tool_registry_version": tool_registry.version,
+        "module_registry_version": module_registry.version,
+        "tools": tools,
+        "modules": modules,
+    }
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=True).encode("utf-8")).hexdigest()
+    return f"snap-{digest[:16]}"

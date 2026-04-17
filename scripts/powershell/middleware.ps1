@@ -95,7 +95,7 @@ $rawCommand = [string]::Join(' ', $Command)
 $previousGuard = [Environment]::GetEnvironmentVariable($guardName)
 [Environment]::SetEnvironmentVariable($guardName, "1")
 try {
-    $routeJson = & local-ai-agent route --text $rawCommand --shell powershell --cwd $cwd --snapshot-version generated
+    $routeJson = & local-ai-agent exec --json --shell powershell --cwd $cwd @Command
 } finally {
     [Environment]::SetEnvironmentVariable($guardName, $previousGuard)
 }

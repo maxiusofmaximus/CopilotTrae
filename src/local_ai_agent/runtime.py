@@ -30,6 +30,7 @@ from local_ai_agent.router.events import (
 )
 from local_ai_agent.router.output import RouteEnvelope
 from local_ai_agent.router.request import TerminalRequest
+from local_ai_agent.router.runtime_services import CachedSnapshotProvider, JsonlRouterEventSink, SnapshotProvider
 from local_ai_agent.router.snapshot import RegistrySnapshot
 from local_ai_agent.session_runner import AgentSessionRunner, serialize_router_envelope
 from local_ai_agent.tools.adapters.generic_cli import GenericCliToolAdapter
@@ -55,10 +56,16 @@ class AppRuntime:
 @dataclass(slots=True)
 class RouterRuntime:
     router: object
-    snapshot: RegistrySnapshot
+    snapshot_provider: SnapshotProvider
     event_sink: RouterEventSink
+    default_session_id: str
+
+    @property
+    def snapshot(self) -> RegistrySnapshot:
+        return self.snapshot_provider.get_snapshot(self.default_session_id)
 
     def resolve(self, request: TerminalRequest) -> RouteEnvelope | RouterErrorEnvelope:
+        snapshot = self.snapshot_provider.get_snapshot(request.session_id)
         self.event_sink.emit(
             RouterRequestReceived(
                 request_id=request.request_id,
@@ -72,10 +79,10 @@ class RouterRuntime:
             RouterSnapshotBound(
                 request_id=request.request_id,
                 session_id=request.session_id,
-                snapshot_version=self.snapshot.snapshot_version,
+                snapshot_version=snapshot.snapshot_version,
             )
         )
-        result = self.router.resolve(request, self.snapshot)
+        result = self.router.resolve(request, snapshot)
         if isinstance(result, RouterErrorEnvelope):
             self.event_sink.emit(
                 RouterErrorEmitted(
@@ -131,15 +138,19 @@ def build_router_runtime(
             capabilities=[],
             available=True,
         )
-    snapshot = build_registry_snapshot(
-        session_id=settings.session_id,
-        tool_registry=tool_registry,
-        module_registry=ModuleRegistry(),
+    module_registry = ModuleRegistry()
+    snapshot_provider = CachedSnapshotProvider(
+        snapshot_factory=lambda session_id: build_registry_snapshot(
+            session_id=session_id,
+            tool_registry=tool_registry,
+            module_registry=module_registry,
+        )
     )
     return RouterRuntime(
         router=DeterministicRouter(),
-        snapshot=snapshot,
-        event_sink=NullRouterEventSink(),
+        snapshot_provider=snapshot_provider,
+        event_sink=JsonlRouterEventSink(settings.logs_dir / "router" / f"{settings.session_id}.jsonl"),
+        default_session_id=settings.session_id,
     )
 
 
@@ -225,4 +236,11 @@ def build_runtime(settings: Settings, stdin: TextIO, stdout: TextIO) -> AppRunti
         chat_input_source=chat_input,
         file_source_factory=lambda path: MultimodalFileInputSource(path, processor=multimodal_processor),
     )
-    return AppRuntime(runner=runner, output=output)
+    router_runtime = build_router_runtime(settings, shell=_default_router_shell())
+    return AppRuntime(runner=runner, output=output, router_runtime=router_runtime)
+
+
+def _default_router_shell() -> str:
+    if os.name == "nt":
+        return "powershell"
+    return "bash"

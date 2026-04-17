@@ -64,7 +64,7 @@ Optional settings:
 
 ### PowerShell Terminal Middleware
 
-If you want to see the terminal middleware working end-to-end, start here. This is the real PowerShell flow for a mistyped command: the wrapper detects the failed command, asks the deterministic router for a route, and then executes the suggested correction through `local-ai-agent exec`.
+If you want to see the terminal middleware working end-to-end, start here. This is the real PowerShell flow for a mistyped command: the wrapper detects the failed command, asks the deterministic router for a machine-readable decision through `local-ai-agent exec --json`, and then executes the human-facing correction flow through `local-ai-agent exec`.
 
 ```powershell
 "y" | pwsh -NoProfile -File .\scripts\powershell\middleware.ps1 github.cli --version
@@ -87,9 +87,10 @@ https://github.com/cli/cli/releases/tag/v2.89.0
 What this demonstrates:
 
 - `middleware.ps1` only falls back when the original command is not found or exits non-zero
-- the router stays JSON-only and is called through `local-ai-agent route`
+- the middleware gets the route envelope through `local-ai-agent exec --json`, so it uses the active snapshot already bound by the runtime
 - the human-facing decision and confirmation happen through `local-ai-agent exec`
 - a successful command passthrough remains transparent when no fallback is needed
+- router events are persisted to `logs/router/<session-id>.jsonl` after each real resolution
 
 ### One-Shot Reply
 
@@ -148,8 +149,9 @@ Output contract:
 
 Current integration note:
 
-- the host binds the snapshot and `router_runtime` externally before invoking `route`
-- `route` is intentionally not allowed to construct or select snapshots on its own
+- `build_runtime()` now injects `router_runtime` into `AppRuntime` for in-process CLI and host flows
+- direct `route` calls still require an explicit `--snapshot-version` and remain useful for contract testing
+- the PowerShell middleware no longer invents a placeholder snapshot version; it asks `exec --json` for the active routed envelope instead
 
 ## Deterministic Middleware Boundaries
 
@@ -184,6 +186,15 @@ Each record includes:
 - finish reason
 - token usage when the provider returns it
 
+Router resolutions also write JSONL events under `logs/router/<session-id>.jsonl`.
+
+Each router event record includes:
+
+- `event_name`
+- request and session identifiers
+- the bound `snapshot_version`
+- route or error details emitted during resolution
+
 ## Architecture Notes
 
 - `src/local_ai_agent/models.py`: OpenAI-style request and response models
@@ -195,6 +206,13 @@ Each record includes:
 - `src/local_ai_agent/output_adapters.py`: console and clipboard outputs
 - `src/local_ai_agent/automation.py`: placeholder automation interface for future UI injection
 - `src/local_ai_agent/cli.py`: CLI control surface
+
+Current terminal wiring:
+
+- `build_runtime()` creates the session runner and injects `router_runtime` into `AppRuntime`
+- `router_runtime` resolves against a cached snapshot provider instead of an embedded snapshot value
+- `middleware.ps1` uses `exec --json` for machine-readable routing and `exec` for the interactive correction or execution step
+- `JsonlRouterEventSink` persists router events for every real resolution
 
 ## Safety Defaults
 
@@ -214,5 +232,5 @@ Each record includes:
 ## Future Migration
 
 - `Python` is the active implementation stack for the current middleware phases
-- `Rust + TypeScript + Tauri` is the agreed definitive stack after Python behavior is fully validated
+- `Rust + TypeScript + Tauri` is the agreed definitive stack after Python behavior, contracts, and middleware traces are fully validated
 - that migration is a later closed phase, not an open design question during the current plan

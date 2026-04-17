@@ -22,6 +22,15 @@ class SpyRouter:
         return self.result
 
 
+class StaticSnapshotProvider:
+    def __init__(self, snapshot: RegistrySnapshot) -> None:
+        self.snapshot = snapshot
+
+    def get_snapshot(self, session_id: str) -> RegistrySnapshot:
+        assert session_id == self.snapshot.built_for_session
+        return self.snapshot
+
+
 def test_runtime_binds_request_to_single_snapshot_and_emits_events():
     from local_ai_agent.router.events import (
         RouterIntentClassified,
@@ -53,13 +62,23 @@ def test_runtime_binds_request_to_single_snapshot_and_emits_events():
     )
     sink = RecordingEventSink()
     router = SpyRouter(route)
-    runtime = RouterRuntime(router=router, snapshot=snapshot, event_sink=sink)
+    runtime = RouterRuntime(
+        router=router,
+        snapshot_provider=StaticSnapshotProvider(snapshot),
+        event_sink=sink,
+        default_session_id="sess-1",
+    )
 
     result = runtime.resolve(request)
 
     assert result is route
     assert router.calls == [(request, snapshot)]
-    assert set(RouterRuntime.__dataclass_fields__) == {"router", "snapshot", "event_sink"}
+    assert set(RouterRuntime.__dataclass_fields__) == {
+        "router",
+        "snapshot_provider",
+        "event_sink",
+        "default_session_id",
+    }
     assert [type(event) for event in sink.events] == [
         RouterRequestReceived,
         RouterSnapshotBound,
@@ -105,8 +124,18 @@ def test_runtime_serializes_hub_proposals_without_executing_actions():
         resolver_path=["normalize_input", "evaluate_capability_gap"],
     )
 
-    install_runtime = RouterRuntime(router=SpyRouter(hub_install), snapshot=snapshot, event_sink=RecordingEventSink())
-    action_runtime = RouterRuntime(router=SpyRouter(hub_action), snapshot=snapshot, event_sink=RecordingEventSink())
+    install_runtime = RouterRuntime(
+        router=SpyRouter(hub_install),
+        snapshot_provider=StaticSnapshotProvider(snapshot),
+        event_sink=RecordingEventSink(),
+        default_session_id="sess-1",
+    )
+    action_runtime = RouterRuntime(
+        router=SpyRouter(hub_action),
+        snapshot_provider=StaticSnapshotProvider(snapshot),
+        event_sink=RecordingEventSink(),
+        default_session_id="sess-1",
+    )
 
     install_payload = install_runtime.resolve_serialized(request)
     action_payload = action_runtime.resolve_serialized(request)

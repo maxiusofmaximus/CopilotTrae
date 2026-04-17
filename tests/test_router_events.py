@@ -20,6 +20,15 @@ class SpyRouter:
         return self.result
 
 
+class StaticSnapshotProvider:
+    def __init__(self, snapshot: RegistrySnapshot) -> None:
+        self.snapshot = snapshot
+
+    def get_snapshot(self, session_id: str) -> RegistrySnapshot:
+        assert session_id == self.snapshot.built_for_session
+        return self.snapshot
+
+
 def test_runtime_emits_typed_error_event_for_router_errors():
     from local_ai_agent.router.events import RouterErrorEmitted, RouterRequestReceived, RouterSnapshotBound
 
@@ -40,7 +49,12 @@ def test_runtime_emits_typed_error_event_for_router_errors():
         diagnostics={"request_snapshot_version": "snap-stale"},
     )
     sink = RecordingEventSink()
-    runtime = RouterRuntime(router=SpyRouter(error), snapshot=snapshot, event_sink=sink)
+    runtime = RouterRuntime(
+        router=SpyRouter(error),
+        snapshot_provider=StaticSnapshotProvider(snapshot),
+        event_sink=sink,
+        default_session_id="sess-1",
+    )
 
     result = runtime.resolve(request)
 

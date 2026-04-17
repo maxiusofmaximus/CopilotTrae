@@ -2,228 +2,160 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Connect the deterministic router to real runtime state and add a real terminal host that consumes routing decisions without giving execution authority to the router itself.
+**Goal:** Connect the deterministic router to real runtime state and complete the runtime adoption path without redoing the router, terminal host, or CLI surfaces that already exist.
 
-**Architecture:** Keep the router pure and snapshot-bound. Add production runtime services that build session-scoped snapshots and persist router events, then introduce a terminal host layer that consumes `RouteEnvelope` values and decides whether to execute a subprocess, print a correction, show a Hub proposal, or reject the request. The CLI will expose both the existing machine-facing `route` command and a new user-facing terminal command that uses the same routing pipeline internally.
+**Architecture:** Keep the router pure and snapshot-bound. Reuse the existing `RouterRuntime`, `TerminalHost`, `CommandExecutor`, `route`, `exec`, and `terminal` surfaces. Fill only the remaining gaps: inject `router_runtime` from `build_runtime()`, make `snapshot_version` stable per session, persist router events to JSONL, and introduce a swappable `snapshot_provider` abstraction.
 
-**Tech Stack:** Python 3.12, `pytest`, `argparse`, `subprocess`, JSONL logging, existing `Settings` / runtime / router contracts
+**Tech Stack:** Python 3.12, `pytest`, `argparse`, `subprocess`, JSONL logging, existing `Settings` / runtime / router / terminal contracts
 
 ---
 
-### Task 1: Wire Real Snapshot And Event Services Into Runtime
+## Current Repo Reality
+
+The repo already has the following pieces implemented:
+
+- `src/local_ai_agent/terminal/host.py`
+- `src/local_ai_agent/terminal/executor.py`
+- CLI commands: `route`, `exec`, and `terminal`
+- `RouterRuntime` in `src/local_ai_agent/runtime.py` with typed event emission
+- terminal coverage in `tests/test_terminal_integration.py`, `tests/test_terminal_host.py`, and `tests/test_terminal_ux.py`
+
+This plan intentionally avoids rebuilding any of that.
+
+---
+
+### Task 1: Wire Missing Runtime Services Into `build_runtime()`
 
 **Files:**
 - Create: `src/local_ai_agent/router/runtime_services.py`
 - Modify: `src/local_ai_agent/runtime.py`
 - Modify: `src/local_ai_agent/modules/snapshot_builder.py`
 - Modify: `src/local_ai_agent/config.py`
-- Test: `tests/test_runtime_router_wiring.py`
+- Create: `tests/test_runtime_router_wiring.py`
 
 **Step 1: Write the failing test**
 
 ```python
-def test_build_runtime_exposes_router_runtime_with_real_snapshot_provider(tmp_path):
+def test_build_runtime_injects_router_runtime_and_persists_events(tmp_path):
     settings = Settings(
         provider="stub",
         api_key="test",
         session_id="sess-1",
         logs_dir=tmp_path / "logs",
-        router_tools_manifest=[],
     )
 
     runtime = build_runtime(settings, stdin=io.StringIO(""), stdout=io.StringIO())
 
     assert runtime.router_runtime is not None
-    snapshot = runtime.router_runtime.snapshot_provider.get_snapshot(session_id="sess-1")
-    assert snapshot.built_for_session == "sess-1"
+
+    request = TerminalRequest(
+        request_id="req-1",
+        session_id="sess-1",
+        shell="powershell",
+        raw_input="gh --version",
+        cwd="C:\\repo",
+        snapshot_version=runtime.router_runtime.snapshot.snapshot_version,
+        requested_mode="json",
+    )
+
+    _ = runtime.router_runtime.resolve(request)
+
+    assert (settings.logs_dir / "router" / "sess-1.jsonl").exists()
 ```
 
 **Step 2: Run test to verify it fails**
 
-Run: `pytest tests/test_runtime_router_wiring.py::test_build_runtime_exposes_router_runtime_with_real_snapshot_provider -v`
-Expected: FAIL because `build_runtime()` does not wire a real snapshot provider or event sink.
+Run: `pytest tests/test_runtime_router_wiring.py::test_build_runtime_injects_router_runtime_and_persists_events -v`
+Expected: FAIL because `build_runtime()` does not yet inject a real `router_runtime` and router events are not persisted.
 
 **Step 3: Write minimal implementation**
 
-```python
-@dataclass(slots=True)
-class StaticSnapshotProvider:
-    snapshot: RegistrySnapshot
+Implementation requirements:
 
-    def get_snapshot(self, *, session_id: str) -> RegistrySnapshot:
-        if session_id != self.snapshot.built_for_session:
-            return replace(self.snapshot, built_for_session=session_id)
-        return self.snapshot
-
-
-@dataclass(slots=True)
-class JsonlRouterEventSink:
-    log_path: Path
-
-    def emit(self, event: Any) -> None:
-        with self.log_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(asdict(event), ensure_ascii=True) + "\n")
-```
+- Add `snapshot_provider` abstraction (interchangeable)
+  - Protocol surface: `get_snapshot(session_id: str) -> RegistrySnapshot`
+  - Default implementation may be static-per-session, but must remain swappable
+- Add `JsonlRouterEventSink`
+  - writes JSONL with `ensure_ascii=True`
+  - stores logs under `${logs_dir}/router/${session_id}.jsonl`
+- Update `build_runtime()` to populate `AppRuntime.router_runtime`
+- Keep the existing `RouterRuntime` and `TerminalHost` behavior intact
 
 Also:
 
-- add `build_default_tool_registry(settings)` and `build_default_module_registry(settings)`
-- change `build_registry_snapshot()` to generate a stable session-scoped snapshot version instead of the hard-coded `"generated"`
-- instantiate `RouterRuntime` inside `build_runtime()`
-- pass `router_runtime` into `AgentSessionRunner`
+- Change `build_registry_snapshot()` so `snapshot_version` is stable per session instead of hard-coded `"generated"`
+- Only extend `config.py` if a real configuration gap appears while implementing the above
 
 **Step 4: Run test to verify it passes**
 
-Run: `pytest tests/test_runtime_router_wiring.py::test_build_runtime_exposes_router_runtime_with_real_snapshot_provider -v`
+Run: `pytest tests/test_runtime_router_wiring.py::test_build_runtime_injects_router_runtime_and_persists_events -v`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
 git add src/local_ai_agent/router/runtime_services.py src/local_ai_agent/runtime.py src/local_ai_agent/modules/snapshot_builder.py src/local_ai_agent/config.py tests/test_runtime_router_wiring.py
-git commit -m "feat: wire router runtime to real snapshot services"
+git commit -m "feat: inject router runtime into build_runtime"
 ```
 
-### Task 2: Add Terminal Host That Consumes Route Envelopes
+---
+
+### Task 2: Keep Existing Terminal Host Paths And Coverage
 
 **Files:**
-- Create: `src/local_ai_agent/terminal_host.py`
-- Create: `src/local_ai_agent/terminal_executor.py`
-- Modify: `src/local_ai_agent/contracts.py`
-- Test: `tests/test_terminal_host.py`
+- Use existing: `src/local_ai_agent/terminal/host.py`
+- Use existing: `src/local_ai_agent/terminal/executor.py`
+- Reuse existing tests: `tests/test_terminal_integration.py`, `tests/test_terminal_host.py`, `tests/test_terminal_ux.py`
+- Add only the missing runtime wiring coverage from Task 1: `tests/test_runtime_router_wiring.py`
 
-**Step 1: Write the failing test**
+**Step 1: Validate existing coverage**
 
-```python
-def test_terminal_host_executes_only_tool_execution_routes():
-    executor = FakeExecutor()
-    output = FakeOutput()
-    host = TerminalHost(executor=executor, output=output)
-
-    result = host.handle(
-        RouteEnvelope.tool_execution(
-            intent="tool_execution",
-            snapshot_version="snap-1",
-            tool_name="gh",
-            shell="powershell",
-            argv=["gh", "--version"],
-            confidence=1.0,
-            threshold_applied=0.85,
-            threshold_source="intent:tool_execution",
-            resolver_path=["normalize_input"],
-            evidence=["tool_name_match:gh"],
-        )
-    )
-
-    assert result.exit_code == 0
-    assert executor.calls == [{"argv": ["gh", "--version"], "shell": "powershell"}]
-```
-
-**Step 2: Run test to verify it fails**
-
-Run: `pytest tests/test_terminal_host.py::test_terminal_host_executes_only_tool_execution_routes -v`
-Expected: FAIL because no terminal host exists.
-
-**Step 3: Write minimal implementation**
-
-```python
-class TerminalExecutor(Protocol):
-    def run(self, *, argv: list[str], shell: str, cwd: str | None = None) -> int:
-        ...
-
-
-@dataclass(slots=True)
-class TerminalHostResult:
-    exit_code: int
-
-
-class TerminalHost:
-    def handle(self, route: RouteEnvelope, *, cwd: str | None = None) -> TerminalHostResult:
-        if route.route == "tool_execution":
-            exit_code = self.executor.run(
-                argv=list(route.payload["argv"]),
-                shell=str(route.payload["shell"]),
-                cwd=cwd,
-            )
-            return TerminalHostResult(exit_code=exit_code)
-        ...
-```
-
-Also cover:
-
-- `command_fix` prints the suggested command and exits non-zero
-- `clarification` prints options and exits non-zero
-- `hub_install` prints module proposals and exits non-zero
-- `policy_denied` prints the machine-readable reason and exits non-zero
-
-**Step 4: Run test to verify it passes**
-
-Run: `pytest tests/test_terminal_host.py -v`
+Run: `pytest tests/test_terminal_host.py tests/test_terminal_integration.py tests/test_terminal_ux.py -v`
 Expected: PASS
 
-**Step 5: Commit**
+**Step 2: Do not duplicate host tests**
 
-```bash
-git add src/local_ai_agent/terminal_host.py src/local_ai_agent/terminal_executor.py src/local_ai_agent/contracts.py tests/test_terminal_host.py
-git commit -m "feat: add terminal host for route consumption"
-```
+This task is an alignment constraint, not a rebuild task:
 
-### Task 3: Expose A User-Facing Terminal Command In CLI
+- do not introduce `src/local_ai_agent/terminal_host.py`
+- do not introduce `src/local_ai_agent/terminal_executor.py`
+- do not create a parallel test suite for behaviors that are already covered
+
+**Step 3: No code changes unless Task 1 exposes a real gap**
+
+If Task 1 wiring reveals a missing host/runtime seam, patch it minimally in the existing files and reuse the current test modules.
+
+No commit is needed for this task if it remains plan-only.
+
+---
+
+### Task 3: Reduce CLI Scope To Wiring Cleanup Only
 
 **Files:**
-- Modify: `src/local_ai_agent/cli.py`
-- Modify: `src/local_ai_agent/runtime.py`
-- Test: `tests/test_cli_terminal.py`
+- Modify only if needed: `src/local_ai_agent/cli.py`
+- Modify only if needed: `src/local_ai_agent/runtime.py`
+- Reuse existing terminal coverage unless behavior changes
 
-**Step 1: Write the failing test**
+The user-facing command surface already exists. The remaining decision is whether `exec` and `terminal` need consolidation.
 
-```python
-def test_cli_terminal_command_routes_then_delegates_to_terminal_host():
-    runtime = FakeRuntime()
+Recommended default:
 
-    exit_code = main(
-        ["terminal", "--text", "gh --version", "--shell", "powershell", "--cwd", "C:\\repo"],
-        runtime=runtime,
-        stdout=io.StringIO(),
-    )
+- keep `exec` as the one-shot middleware-facing surface
+- keep `terminal` as the interactive loop surface
+- let Task 1 wiring make both cleaner automatically by sourcing `router_runtime` from `build_runtime()`
 
-    assert exit_code == 0
-    assert runtime.runner.route_calls
-    assert runtime.terminal_host.calls
-```
+Only make code changes here if Task 1 reveals duplicated wiring worth consolidating internally.
 
-**Step 2: Run test to verify it fails**
+If an internal cleanup is needed:
 
-Run: `pytest tests/test_cli_terminal.py::test_cli_terminal_command_routes_then_delegates_to_terminal_host -v`
-Expected: FAIL because the CLI has no user-facing terminal host command.
+- share router-runtime acquisition
+- share terminal-host construction
+- avoid any CLI surface change
+- avoid new tests unless behavior changes
 
-**Step 3: Write minimal implementation**
+Commit only if `cli.py` or `runtime.py` actually changes in this task.
 
-```python
-terminal = subparsers.add_parser("terminal", help="Route terminal input and apply the host decision.")
-terminal.add_argument("--text", required=True)
-terminal.add_argument("--shell", choices=["powershell", "bash"], required=True)
-terminal.add_argument("--cwd", required=True)
-```
-
-Then:
-
-- build a `TerminalRequest`
-- call `runtime.runner.route_terminal_request(request)`
-- hand the resulting envelope to `runtime.terminal_host.handle(...)`
-- return the host exit code
-
-**Step 4: Run test to verify it passes**
-
-Run: `pytest tests/test_cli_terminal.py::test_cli_terminal_command_routes_then_delegates_to_terminal_host -v`
-Expected: PASS
-
-**Step 5: Commit**
-
-```bash
-git add src/local_ai_agent/cli.py src/local_ai_agent/runtime.py tests/test_cli_terminal.py
-git commit -m "feat: add terminal host cli command"
-```
+---
 
 ### Task 4: Verify End-To-End Wiring And Document Operational Flow
 
@@ -256,7 +188,7 @@ If needed, add a tiny helper in runtime to expose the router event log path for 
 
 **Step 4: Run focused suite and verify it passes**
 
-Run: `pytest tests/test_runtime_router_wiring.py tests/test_terminal_host.py tests/test_cli_terminal.py tests/test_terminal_runtime_e2e.py tests/test_cli.py tests/test_router_contracts.py tests/test_router_policies.py tests/test_tool_registry.py tests/test_module_registry.py tests/test_router_pipeline.py tests/test_command_fix.py tests/test_router_integration.py tests/test_router_events.py tests/test_router_escalation.py tests/test_router_contract_invariants.py -v`
+Run: `pytest tests/test_runtime_router_wiring.py tests/test_terminal_host.py tests/test_terminal_integration.py tests/test_terminal_ux.py tests/test_terminal_runtime_e2e.py tests/test_cli.py tests/test_router_contracts.py tests/test_router_policies.py tests/test_tool_registry.py tests/test_module_registry.py tests/test_router_pipeline.py tests/test_command_fix.py tests/test_router_integration.py tests/test_router_events.py tests/test_router_contract_invariants.py -v`
 Expected: PASS
 
 **Step 5: Commit**
@@ -273,6 +205,7 @@ git commit -m "docs: record terminal runtime adoption flow"
 - The terminal host is the only layer allowed to execute a routed command.
 - Hub proposals remain advisory.
 - External assistance stays policy-gated and non-autonomous.
+- This phase does not rebuild the host or CLI surfaces already validated in hardening.
 
 ## Suggested Execution Order
 
