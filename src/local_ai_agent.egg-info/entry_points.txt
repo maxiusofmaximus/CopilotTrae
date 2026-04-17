@@ -1,2 +1,2 @@
 [console_scripts]
-local-ai-agent = local_ai_agent.cli:app
+local-ai-agent = local_ai_agent.cli:main

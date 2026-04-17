@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterable
 from typing import TextIO
 
 from local_ai_agent.agent import AgentController
@@ -11,10 +13,13 @@ from local_ai_agent.contracts import MemoryStore, OutputSink, RouterEventSink
 from local_ai_agent.input_adapters import MultimodalFileInputSource, PromptedLineInputSource, StreamInputSource
 from local_ai_agent.logging_utils import InteractionLogger
 from local_ai_agent.memory import ConversationMemory, PersistentConversationMemory
+from local_ai_agent.modules.registry import ModuleRegistry
+from local_ai_agent.modules.snapshot_builder import build_registry_snapshot
 from local_ai_agent.multimodal import InputRoutingPolicy, MultimodalInputProcessor, OCRScorer
 from local_ai_agent.ocr_extractors import TesseractOCRExtractor
 from local_ai_agent.output_adapters import ConsoleOutputSink, StreamConfirmationPolicy, TkClipboardSink
 from local_ai_agent.providers import build_provider
+from local_ai_agent.router.pipeline import DeterministicRouter
 from local_ai_agent.router.errors import RouterErrorEnvelope
 from local_ai_agent.router.events import (
     RouterErrorEmitted,
@@ -27,9 +32,17 @@ from local_ai_agent.router.output import RouteEnvelope
 from local_ai_agent.router.request import TerminalRequest
 from local_ai_agent.router.snapshot import RegistrySnapshot
 from local_ai_agent.session_runner import AgentSessionRunner, serialize_router_envelope
+from local_ai_agent.tools.adapters.generic_cli import GenericCliToolAdapter
+from local_ai_agent.tools.registry import ToolRegistry
 
 LOGGER = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+WINDOWS_EXECUTABLE_SUFFIXES = frozenset(suffix.lower() for suffix in os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(os.pathsep))
+KNOWN_TOOL_ALIASES: dict[str, tuple[str, ...]] = {
+    "gh": ("github-cli",),
+    "pwsh": ("powershell", "powershell7"),
+    "python": ("python3",),
+}
 
 
 @dataclass(slots=True)
@@ -96,6 +109,70 @@ class RouterRuntime:
 
     def resolve_serialized(self, request: TerminalRequest) -> dict[str, object]:
         return serialize_router_envelope(self.resolve(request))
+
+
+class NullRouterEventSink:
+    def emit(self, event: object) -> None:
+        del event
+
+
+def build_router_runtime(
+    settings: Settings,
+    *,
+    shell: str,
+) -> RouterRuntime:
+    tool_registry = ToolRegistry()
+    for tool_name, binary_path in _iter_path_tools():
+        tool_registry.register(
+            tool_name=tool_name,
+            adapter=GenericCliToolAdapter(shell=shell),
+            binary_path=binary_path,
+            aliases=list(KNOWN_TOOL_ALIASES.get(tool_name, ())),
+            capabilities=[],
+            available=True,
+        )
+    snapshot = build_registry_snapshot(
+        session_id=settings.session_id,
+        tool_registry=tool_registry,
+        module_registry=ModuleRegistry(),
+    )
+    return RouterRuntime(
+        router=DeterministicRouter(),
+        snapshot=snapshot,
+        event_sink=NullRouterEventSink(),
+    )
+
+
+def _iter_path_tools() -> Iterable[tuple[str, Path]]:
+    seen: set[str] = set()
+    for raw_directory in os.environ.get("PATH", "").split(os.pathsep):
+        if not raw_directory:
+            continue
+        directory = Path(raw_directory)
+        if not directory.is_dir():
+            continue
+        try:
+            children = directory.iterdir()
+        except OSError:
+            continue
+        for child in children:
+            if not child.is_file():
+                continue
+            tool_name = _tool_name_from_path(child)
+            if tool_name is None or tool_name in seen:
+                continue
+            seen.add(tool_name)
+            yield tool_name, child
+
+
+def _tool_name_from_path(path: Path) -> str | None:
+    if os.name == "nt":
+        if path.suffix.lower() not in WINDOWS_EXECUTABLE_SUFFIXES:
+            return None
+        return path.stem.lower()
+    if os.access(path, os.X_OK):
+        return path.name.lower()
+    return None
 
 
 def build_memory_store(settings: Settings) -> MemoryStore:

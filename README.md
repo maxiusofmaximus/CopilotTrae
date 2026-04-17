@@ -62,6 +62,35 @@ Optional settings:
 
 ## Usage
 
+### PowerShell Terminal Middleware
+
+If you want to see the terminal middleware working end-to-end, start here. This is the real PowerShell flow for a mistyped command: the wrapper detects the failed command, asks the deterministic router for a route, and then executes the suggested correction through `local-ai-agent exec`.
+
+```powershell
+"y" | pwsh -NoProfile -File .\scripts\powershell\middleware.ps1 github.cli --version
+```
+
+Expected output:
+
+```text
+Router route: command_fix
+Command not found.
+
+Suggested command:
+gh --version
+
+Execute suggested command? (y/n): Executed suggested command: gh --version
+gh version 2.89.0 (2026-03-26)
+https://github.com/cli/cli/releases/tag/v2.89.0
+```
+
+What this demonstrates:
+
+- `middleware.ps1` only falls back when the original command is not found or exits non-zero
+- the router stays JSON-only and is called through `local-ai-agent route`
+- the human-facing decision and confirmation happen through `local-ai-agent exec`
+- a successful command passthrough remains transparent when no fallback is needed
+
 ### One-Shot Reply
 
 ```bash
