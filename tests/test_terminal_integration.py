@@ -11,6 +11,11 @@ from local_ai_agent.router.snapshot import RegistrySnapshot
 from local_ai_agent.terminal.executor import ExecutionResult
 
 
+@pytest.fixture(autouse=True)
+def _stub_provider_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_AI_AGENT_PROVIDER", "stub")
+
+
 class FakeRouterRuntime:
     def __init__(self, envelope: object) -> None:
         self.envelope = envelope
