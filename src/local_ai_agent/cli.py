@@ -196,6 +196,7 @@ def _build_terminal_host(
         session_id=settings.session_id,
         shell=shell,
         cwd=cwd,
+        exec_allowlist=settings.exec_allowlist,
         confirmation_policy=lambda command, envelope: _confirm(
             prompt=f"Execute command? {command} (y/n) ",
             stdin=stdin,
@@ -242,6 +243,7 @@ def _exec_dry_run(
         session_id=settings.session_id,
         shell=shell,
         cwd=cwd,
+        exec_allowlist=settings.exec_allowlist,
     )
     result = host.preview_input(text)
     if debug:

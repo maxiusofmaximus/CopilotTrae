@@ -32,6 +32,13 @@ def _read_dotenv(dotenv_path: Path) -> dict[str, str]:
     return values
 
 
+def _parse_exec_allowlist(raw_value: str | None) -> tuple[str, ...]:
+    if raw_value is None:
+        return ()
+    items = [item.strip() for item in raw_value.split(",")]
+    return tuple(item for item in items if item)
+
+
 class Settings(BaseModel):
     provider: str = "cerebras"
     fallback_provider: str | None = None
@@ -51,6 +58,7 @@ class Settings(BaseModel):
     persistent_memory_enabled: bool = False
     memory_dir: Path = Field(default_factory=lambda: Path("memory"))
     confirm_before_copy: bool = True
+    exec_allowlist: tuple[str, ...] = ()
     logs_dir: Path = Field(default_factory=lambda: Path("logs"))
     session_id: str = Field(default_factory=_default_session_id)
     tesseract_command: str = "bin/tesseract/tesseract.exe"
@@ -86,6 +94,7 @@ class Settings(BaseModel):
             memory_dir=Path(env.get("LOCAL_AI_AGENT_MEMORY_DIR", "memory")),
             confirm_before_copy=env.get("LOCAL_AI_AGENT_CONFIRM_BEFORE_COPY", "true").lower()
             in {"1", "true", "yes", "on"},
+            exec_allowlist=_parse_exec_allowlist(env.get("LOCAL_AI_AGENT_EXEC_ALLOWLIST")),
             logs_dir=Path(env.get("LOCAL_AI_AGENT_LOGS_DIR", "logs")),
             session_id=env.get("LOCAL_AI_AGENT_SESSION_ID", _default_session_id()),
             tesseract_command=env.get("LOCAL_AI_AGENT_TESSERACT_COMMAND", "bin/tesseract/tesseract.exe"),

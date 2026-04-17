@@ -95,6 +95,74 @@ def test_terminal_host_tool_execution_runs_when_allowed():
     assert executor.commands == ["gh --version"]
 
 
+def test_terminal_host_blocks_execution_when_allowlist_denies_command():
+    from local_ai_agent.terminal.host import TerminalHost
+
+    envelope = RouteEnvelope.tool_execution(
+        intent="tool_execution",
+        snapshot_version="snap-1",
+        tool_name="gh",
+        shell="powershell",
+        argv=["gh", "--version"],
+        confidence=1.0,
+        threshold_applied=0.93,
+        threshold_source="intent:execution",
+        resolver_path=["normalize_input", "evaluate_confidence"],
+        evidence=["tool_name_match:gh"],
+    )
+    executor = FakeExecutor()
+    host = TerminalHost(
+        router_runtime=FakeRouterRuntime(envelope),
+        executor=executor,
+        session_id="sess-1",
+        shell="powershell",
+        cwd="C:\\repo",
+        request_id_factory=lambda: "req-allowlist-1",
+        exec_allowlist={"git"},
+    )
+
+    result = host.handle_input("gh --version")
+
+    assert result.route == "tool_execution"
+    assert result.action == "blocked"
+    assert result.blocked_reason == "exec_allowlist_denied"
+    assert executor.commands == []
+
+
+def test_terminal_host_blocks_suggested_command_execution_when_allowlist_denies_command():
+    from local_ai_agent.terminal.host import TerminalHost
+
+    envelope = RouteEnvelope.command_fix(
+        intent="correction",
+        snapshot_version="snap-1",
+        original="github.cli --version",
+        suggested_command="gh --version",
+        evidence=["alias_match:gh"],
+        confidence=0.95,
+        threshold_applied=0.90,
+        threshold_source="intent:command_fix",
+        resolver_path=["normalize_input", "fixes.rank_candidates", "evaluate_confidence"],
+    )
+    executor = FakeExecutor()
+    host = TerminalHost(
+        router_runtime=FakeRouterRuntime(envelope),
+        executor=executor,
+        session_id="sess-1",
+        shell="powershell",
+        cwd="C:\\repo",
+        request_id_factory=lambda: "req-allowlist-2",
+        exec_allowlist={"git"},
+    )
+
+    suggested = host.handle_input("github.cli --version")
+    result = host.execute_suggested_command(suggested)
+
+    assert result.route == "command_fix"
+    assert result.action == "blocked"
+    assert result.blocked_reason == "exec_allowlist_denied"
+    assert executor.commands == []
+
+
 def test_terminal_host_policy_denied_blocks_execution():
     from local_ai_agent.terminal.host import TerminalHost
 

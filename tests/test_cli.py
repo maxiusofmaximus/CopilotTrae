@@ -1,6 +1,9 @@
 import io
 import json
 
+import pytest
+
+from local_ai_agent.config import Settings
 from local_ai_agent.cli import main
 from local_ai_agent.router.errors import RouterErrorEnvelope
 from local_ai_agent.router.output import EnvelopeMetadata, RouteEnvelope
@@ -48,6 +51,11 @@ class FakeRuntimeWithRoute(FakeRuntime):
     def __init__(self, payload: dict[str, object]) -> None:
         super().__init__()
         self.router_runtime = FakeRouterRuntime(payload)
+
+
+@pytest.fixture(autouse=True)
+def stub_provider_env(monkeypatch):
+    monkeypatch.setenv("LOCAL_AI_AGENT_PROVIDER", "stub")
 
 
 def test_cli_parses_arguments_and_delegates_reply_to_runner():
@@ -140,3 +148,44 @@ def test_cli_route_command_prints_machine_readable_router_json():
     assert runtime.runner.reply_calls == []
     assert runtime.runner.chat_calls == []
     assert runtime.output.values == []
+
+
+def test_settings_from_env_reads_exec_allowlist(monkeypatch):
+    monkeypatch.setenv("LOCAL_AI_AGENT_PROVIDER", "stub")
+    monkeypatch.setenv("LOCAL_AI_AGENT_EXEC_ALLOWLIST", "gh, git ,pwsh")
+
+    settings = Settings.from_env()
+
+    assert settings.exec_allowlist == ("gh", "git", "pwsh")
+
+
+def test_cli_build_terminal_host_passes_exec_allowlist_from_settings():
+    from local_ai_agent import cli as cli_module
+
+    class FakeTerminalHost:
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+
+    host_calls: dict[str, object] = {}
+
+    def fake_terminal_host(**kwargs):
+        host_calls.update(kwargs)
+        return FakeTerminalHost(**kwargs)
+
+    original_terminal_host = cli_module.TerminalHost
+    cli_module.TerminalHost = fake_terminal_host
+    try:
+        settings = Settings(provider="stub", exec_allowlist=("gh", "git"))
+
+        cli_module._build_terminal_host(
+            route_runtime=object(),
+            settings=settings,
+            shell="powershell",
+            cwd="C:\\repo",
+            stdin=io.StringIO(""),
+            stdout=io.StringIO(),
+        )
+    finally:
+        cli_module.TerminalHost = original_terminal_host
+
+    assert host_calls["exec_allowlist"] == ("gh", "git")

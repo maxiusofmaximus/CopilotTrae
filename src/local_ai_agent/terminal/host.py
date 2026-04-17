@@ -65,6 +65,7 @@ class TerminalHost:
         request_id_factory: Callable[[], str] | None = None,
         confirmation_policy: ConfirmationPolicy | None = None,
         correction_policy: ConfirmationPolicy | None = None,
+        exec_allowlist: tuple[str, ...] | set[str] | None = None,
     ) -> None:
         self._router_runtime = router_runtime
         self._executor = executor
@@ -74,6 +75,7 @@ class TerminalHost:
         self._request_id_factory = request_id_factory or _default_request_id
         self._confirmation_policy = confirmation_policy or _deny_confirmation
         self._correction_policy = correction_policy or _deny_confirmation
+        self._exec_allowlist = {item.strip() for item in (exec_allowlist or ()) if item.strip()}
 
     def handle_input(self, text: str) -> TerminalHostResult:
         request = self._build_request(text, requested_mode="interactive")
@@ -132,6 +134,17 @@ class TerminalHost:
         suggested_command = (result.suggested_command or "").strip()
         if not suggested_command:
             raise ValueError("No suggested command is available to execute.")
+        if self._is_command_blocked(suggested_command):
+            return TerminalHostResult(
+                route=result.route,
+                action="blocked",
+                message=f"Execution blocked by allowlist: {suggested_command}",
+                request=result.request,
+                envelope=result.envelope,
+                suggested_command=suggested_command,
+                blocked_reason="exec_allowlist_denied",
+                can_execute_suggested_command=True,
+            )
         execution_result = self._executor.execute(suggested_command)
         return TerminalHostResult(
             route=result.route,
@@ -195,6 +208,15 @@ class TerminalHost:
             )
 
         command = self._command_from_argv(envelope.payload.get("argv"))
+        if self._is_command_blocked(command):
+            return TerminalHostResult(
+                route=envelope.route,
+                action="blocked",
+                message=f"Execution blocked by allowlist: {command}",
+                request=request,
+                envelope=envelope,
+                blocked_reason="exec_allowlist_denied",
+            )
         requires_confirmation = bool(envelope.payload.get("requires_confirmation", False))
         if requires_confirmation and not self._confirmation_policy(command, envelope):
             return TerminalHostResult(
@@ -353,3 +375,15 @@ class TerminalHost:
         if not isinstance(argv, list):
             return ""
         return " ".join(str(item) for item in argv)
+
+    def _is_command_blocked(self, command: str) -> bool:
+        if not self._exec_allowlist:
+            return False
+        tool_name = self._tool_name_from_command(command)
+        if not tool_name:
+            return True
+        return tool_name not in self._exec_allowlist
+
+    @staticmethod
+    def _tool_name_from_command(command: str) -> str:
+        return command.strip().split(maxsplit=1)[0] if command.strip() else ""
