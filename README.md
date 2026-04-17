@@ -92,6 +92,22 @@ What this demonstrates:
 - a successful command passthrough remains transparent when no fallback is needed
 - router events are persisted to `logs/router/<session-id>.jsonl` after each real resolution
 
+## Operation
+
+- Runbook: [docs/runbooks/production-readiness.md](docs/runbooks/production-readiness.md)
+- Smoke script: [scripts/smoke/production_readiness.ps1](scripts/smoke/production_readiness.ps1)
+
+Quick checks:
+
+```powershell
+pwsh -NoProfile -File .\scripts\smoke\production_readiness.ps1
+```
+
+```powershell
+$env:LOCAL_AI_AGENT_MIDDLEWARE_DISABLED = "1"
+pwsh -NoProfile -File .\scripts\powershell\middleware.ps1 gh --version
+```
+
 ### One-Shot Reply
 
 ```bash
