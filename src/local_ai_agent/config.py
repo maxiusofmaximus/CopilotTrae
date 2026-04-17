@@ -60,6 +60,8 @@ class Settings(BaseModel):
     confirm_before_copy: bool = True
     exec_allowlist: tuple[str, ...] = ()
     logs_dir: Path = Field(default_factory=lambda: Path("logs"))
+    logs_max_bytes: int = 1_048_576
+    logs_max_backups: int = 3
     session_id: str = Field(default_factory=_default_session_id)
     tesseract_command: str = "bin/tesseract/tesseract.exe"
 
@@ -96,6 +98,8 @@ class Settings(BaseModel):
             in {"1", "true", "yes", "on"},
             exec_allowlist=_parse_exec_allowlist(env.get("LOCAL_AI_AGENT_EXEC_ALLOWLIST")),
             logs_dir=Path(env.get("LOCAL_AI_AGENT_LOGS_DIR", "logs")),
+            logs_max_bytes=int(env.get("LOCAL_AI_AGENT_LOGS_MAX_BYTES", "1048576")),
+            logs_max_backups=int(env.get("LOCAL_AI_AGENT_LOGS_MAX_BACKUPS", "3")),
             session_id=env.get("LOCAL_AI_AGENT_SESSION_ID", _default_session_id()),
             tesseract_command=env.get("LOCAL_AI_AGENT_TESSERACT_COMMAND", "bin/tesseract/tesseract.exe"),
         )

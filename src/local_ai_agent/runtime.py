@@ -149,7 +149,11 @@ def build_router_runtime(
     return RouterRuntime(
         router=DeterministicRouter(),
         snapshot_provider=snapshot_provider,
-        event_sink=JsonlRouterEventSink(settings.logs_dir / "router" / f"{settings.session_id}.jsonl"),
+        event_sink=JsonlRouterEventSink(
+            settings.logs_dir / "router" / f"{settings.session_id}.jsonl",
+            max_bytes=settings.logs_max_bytes,
+            max_backups=settings.logs_max_backups,
+        ),
         default_session_id=settings.session_id,
     )
 
@@ -220,7 +224,12 @@ def build_multimodal_input_processor(
 def build_runtime(settings: Settings, stdin: TextIO, stdout: TextIO) -> AppRuntime:
     memory = build_memory_store(settings)
     provider = build_provider(settings)
-    logger = InteractionLogger(logs_dir=settings.logs_dir, session_id=settings.session_id)
+    logger = InteractionLogger(
+        logs_dir=settings.logs_dir,
+        session_id=settings.session_id,
+        max_bytes=settings.logs_max_bytes,
+        max_backups=settings.logs_max_backups,
+    )
     agent = AgentController(settings=settings, llm_client=provider, memory=memory, logger=logger)
     output = ConsoleOutputSink(stdout)
     confirmer = StreamConfirmationPolicy(stdin, output) if settings.confirm_before_copy else None

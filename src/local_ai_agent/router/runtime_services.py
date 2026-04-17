@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import json
 from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Callable, Protocol
 
+from local_ai_agent.log_safety import append_jsonl, redact_secrets
 from local_ai_agent.router.snapshot import RegistrySnapshot
 
 
@@ -29,12 +29,17 @@ class CachedSnapshotProvider:
 @dataclass(slots=True)
 class JsonlRouterEventSink:
     log_path: Path
+    max_bytes: int = 1_048_576
+    max_backups: int = 3
 
     def emit(self, event: object) -> None:
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = _event_payload(event)
-        with self.log_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
+        payload = redact_secrets(_event_payload(event))
+        append_jsonl(
+            self.log_path,
+            payload,
+            max_bytes=self.max_bytes,
+            max_backups=self.max_backups,
+        )
 
 
 def _event_payload(event: object) -> dict[str, object]:
