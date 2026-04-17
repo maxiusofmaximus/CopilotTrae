@@ -198,6 +198,64 @@ exit /b 99
     assert _read_log_lines(log_path) == []
 
 
+def test_middleware_bypasses_local_ai_agent_when_disabled_even_on_command_failure(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log_path = tmp_path / "middleware.log"
+
+    _write_cmd(
+        bin_dir / "local-ai-agent.cmd",
+        r"""
+>>"%MIDDLEWARE_LOG%" echo unexpected %*
+exit /b 99
+""",
+    )
+    _write_cmd(
+        bin_dir / "broken-tool.cmd",
+        r"""
+echo broken-tool-failed 1>&2
+exit /b 7
+""",
+    )
+
+    result = _run_middleware(
+        ["broken-tool", "--version"],
+        bin_dir=bin_dir,
+        log_path=log_path,
+        extra_env={"LOCAL_AI_AGENT_MIDDLEWARE_DISABLED": "1"},
+    )
+
+    assert result.returncode == 7
+    assert result.stdout == ""
+    assert "broken-tool-failed" in result.stderr
+    assert _read_log_lines(log_path) == []
+
+
+def test_middleware_disabled_mode_still_refuses_recursive_self_invocation(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log_path = tmp_path / "middleware.log"
+
+    _write_cmd(
+        bin_dir / "local-ai-agent.cmd",
+        r"""
+>>"%MIDDLEWARE_LOG%" echo unexpected %*
+exit /b 99
+""",
+    )
+
+    result = _run_middleware(
+        [str(MIDDLEWARE_PATH)],
+        bin_dir=bin_dir,
+        log_path=log_path,
+        extra_env={"LOCAL_AI_AGENT_MIDDLEWARE_DISABLED": "1"},
+    )
+
+    assert result.returncode == 1
+    assert "recursive middleware invocation" in result.stderr.lower()
+    assert _read_log_lines(log_path) == []
+
+
 def test_middleware_end_to_end_uses_build_runtime_and_persists_router_events(tmp_path: Path) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()

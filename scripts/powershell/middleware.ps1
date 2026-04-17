@@ -50,6 +50,7 @@ function Exit-With-NoFallback {
 
 $guardName = "LOCAL_AI_AGENT_MIDDLEWARE_ACTIVE"
 $fallbackGuardActive = [Environment]::GetEnvironmentVariable($guardName) -eq "1"
+$middlewareDisabled = [Environment]::GetEnvironmentVariable("LOCAL_AI_AGENT_MIDDLEWARE_DISABLED") -eq "1"
 
 if (-not $Command -or $Command.Count -eq 0) {
     Write-Error "Usage: ./scripts/powershell/middleware.ps1 <command> [args...]"
@@ -68,6 +69,17 @@ if (Test-IsMiddlewareCommand -Name $commandName) {
 }
 
 $resolvedCommand = Get-Command $commandName -ErrorAction SilentlyContinue
+$exitCode = 0
+if ($middlewareDisabled) {
+    if ($null -eq $resolvedCommand) {
+        Exit-With-NoFallback -ExitCode 1 -CommandName $commandName -CommandNotFound $true
+    }
+
+    & $commandName @remainingArgs
+    $exitCode = if ($null -ne $LASTEXITCODE) { [int]$LASTEXITCODE } elseif ($?) { 0 } else { 1 }
+    exit $exitCode
+}
+
 $shouldFallback = $false
 if ($null -ne $resolvedCommand) {
     & $commandName @remainingArgs
