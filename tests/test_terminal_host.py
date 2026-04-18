@@ -95,6 +95,38 @@ def test_terminal_host_tool_execution_runs_when_allowed():
     assert executor.commands == ["gh --version"]
 
 
+def test_terminal_host_tool_execution_blocks_when_argv_is_empty():
+    from local_ai_agent.terminal.host import TerminalHost
+
+    envelope = RouteEnvelope(
+        envelope=EnvelopeMetadata(kind="route", snapshot_version="snap-1"),
+        route="tool_execution",
+        intent="tool_execution",
+        payload={"tool_name": "python", "shell": "powershell", "argv": []},
+        evidence=["tool_name_match:python"],
+        confidence=1.0,
+        threshold_applied=0.93,
+        threshold_source="intent:execution",
+        resolver_path=["normalize_input", "evaluate_confidence"],
+    )
+    executor = FakeExecutor()
+    host = TerminalHost(
+        router_runtime=FakeRouterRuntime(envelope),
+        executor=executor,
+        session_id="sess-1",
+        shell="powershell",
+        cwd="C:\\repo",
+        request_id_factory=lambda: "req-empty",
+    )
+
+    result = host.handle_input("python -v")
+
+    assert result.route == "tool_execution"
+    assert result.action == "blocked"
+    assert result.blocked_reason == "empty_command"
+    assert executor.commands == []
+
+
 def test_terminal_host_policy_denied_blocks_execution():
     from local_ai_agent.terminal.host import TerminalHost
 

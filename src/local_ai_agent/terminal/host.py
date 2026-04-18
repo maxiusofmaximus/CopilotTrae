@@ -105,6 +105,8 @@ class TerminalHost:
             )
         if envelope.route == "tool_execution":
             command = self._command_from_argv(envelope.payload.get("argv"))
+            if not command:
+                return self._empty_command_result(request, envelope)
             return TerminalHostResult(
                 route=envelope.route,
                 action="dry_run",
@@ -195,6 +197,8 @@ class TerminalHost:
             )
 
         command = self._command_from_argv(envelope.payload.get("argv"))
+        if not command:
+            return self._empty_command_result(request, envelope)
         requires_confirmation = bool(envelope.payload.get("requires_confirmation", False))
         if requires_confirmation and not self._confirmation_policy(command, envelope):
             return TerminalHostResult(
@@ -346,6 +350,20 @@ class TerminalHost:
             request=request,
             envelope=envelope,
             blocked_reason=reason,
+        )
+
+    def _empty_command_result(
+        self,
+        request: TerminalRequest,
+        envelope: RouteEnvelope,
+    ) -> TerminalHostResult:
+        return TerminalHostResult(
+            route=envelope.route,
+            action="blocked",
+            message="Execution blocked: empty command.",
+            request=request,
+            envelope=envelope,
+            blocked_reason="empty_command",
         )
 
     @staticmethod

@@ -59,6 +59,37 @@ def test_cli_exec_executes_tool_execution_command(monkeypatch: pytest.MonkeyPatc
     assert "Executed" in stdout.getvalue()
 
 
+def test_cli_exec_blocks_tool_execution_when_argv_is_empty(monkeypatch: pytest.MonkeyPatch):
+    envelope = RouteEnvelope(
+        envelope=EnvelopeMetadata(kind="route", snapshot_version="snap-1"),
+        route="tool_execution",
+        intent="tool_execution",
+        payload={"tool_name": "python", "shell": "powershell", "argv": []},
+        evidence=["tool_name_match:python"],
+        confidence=1.0,
+        threshold_applied=0.93,
+        threshold_source="intent:execution",
+        resolver_path=["normalize_input", "evaluate_confidence"],
+    )
+    runtime = FakeRuntime(envelope)
+    stdout = io.StringIO()
+    stdin = io.StringIO("")
+    executed: list[str] = []
+
+    class FakeExecutor:
+        def execute(self, command: str) -> ExecutionResult:
+            executed.append(command)
+            return ExecutionResult(command=command, returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("local_ai_agent.cli.CommandExecutor", FakeExecutor)
+
+    exit_code = main(["exec", "python", "-v"], runtime=runtime, stdin=stdin, stdout=stdout)
+
+    assert exit_code != 0
+    assert executed == []
+    assert "empty command" in stdout.getvalue().lower()
+
+
 def test_cli_exec_suggests_correction_and_does_not_execute_when_user_declines(monkeypatch: pytest.MonkeyPatch):
     envelope = RouteEnvelope.command_fix(
         intent="correction",
