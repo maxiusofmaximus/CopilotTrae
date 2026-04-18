@@ -5,3 +5,4 @@ tmp/architecture_compare/AsistenteW11/
 .worktrees/
 __pycache__/
 *.pyc
+logs/
