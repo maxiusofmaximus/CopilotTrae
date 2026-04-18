@@ -1,4 +1,9 @@
 Claudia/
+agents.md
+logs/
+runtime_validation/
+src/*.egg-info/
+tmp/
 tmp/architecture_compare/AsistHub/
 tmp/architecture_compare/DEV-OS/
 tmp/architecture_compare/AsistenteW11/
