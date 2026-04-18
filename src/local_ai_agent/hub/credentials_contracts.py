@@ -29,6 +29,7 @@ class CredentialDescriptor:
     label: str
     expected_env_vars: tuple[str, ...]
     supports_fallback: bool
+    write_env_var: str | None = None
 
 
 @dataclass(frozen=True)
@@ -94,4 +95,3 @@ class CredentialBackend(Protocol):
         base_env: Mapping[str, str],
         provider_id: str,
     ) -> dict[str, str]: ...
-
