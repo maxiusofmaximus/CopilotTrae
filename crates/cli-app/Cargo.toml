@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+router-core = { path = "../router-core" }
 
 [dev-dependencies]
 core-contracts = { path = "../core-contracts" }
