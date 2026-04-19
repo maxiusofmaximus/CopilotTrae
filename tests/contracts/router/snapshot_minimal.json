@@ -1,0 +1,25 @@
+{
+  "snapshot_version": "snap-fixture-1234",
+  "built_for_session": "sess-fixture",
+  "built_at": "",
+  "tools": [],
+  "modules": [],
+  "policies": {},
+  "source_versions": {
+    "tool_registry": "1",
+    "module_registry": "1"
+  },
+  "execution_surface": {
+    "tools": []
+  },
+  "capability_surface": {
+    "capabilities": []
+  },
+  "extensions": {
+    "aliases": {},
+    "policies": {},
+    "mcp_servers": [],
+    "provider_status": {},
+    "health_checks": []
+  }
+}
