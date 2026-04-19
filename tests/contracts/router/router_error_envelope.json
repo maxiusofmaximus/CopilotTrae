@@ -1,0 +1,11 @@
+{
+  "kind": "router_error",
+  "snapshot_version": "fixture-snapshot-v1",
+  "error_code": "snapshot_version_mismatch",
+  "request_id": "router-error-fixture",
+  "session_id": "fixture-export",
+  "diagnostics": {
+    "request_snapshot_version": "stale-snapshot-version",
+    "active_snapshot_version": "fixture-snapshot-v1"
+  }
+}

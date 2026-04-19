@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-04-19T00:07:07.380448+00:00",
+  "event": "interaction",
+  "provider": "stub",
+  "model": "gpt-oss-120b",
+  "request": {
+    "input": "Export the current Python runtime session reply fixture.",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a production-grade workflow assistant. Respond clearly, structure the answer for real operational use, and call out risks or next actions when helpful."
+      },
+      {
+        "role": "user",
+        "content": "Export the current Python runtime session reply fixture."
+      }
+    ]
+  },
+  "response": {
+    "content": "Stub response",
+    "finish_reason": "stop",
+    "usage": null
+  }
+}
