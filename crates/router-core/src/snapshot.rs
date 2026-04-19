@@ -15,6 +15,21 @@ pub struct RegistrySnapshot {
 }
 
 impl RegistrySnapshot {
+    pub fn minimal(snapshot_version: String, built_for_session: String) -> Self {
+        Self {
+            snapshot_version,
+            built_for_session,
+            built_at: String::new(),
+            tools: Vec::new(),
+            modules: Vec::new(),
+            policies: JsonObject::new(),
+            source_versions: JsonObject::new(),
+            execution_surface: JsonObject::new(),
+            capability_surface: JsonObject::new(),
+            extensions: JsonObject::new(),
+        }
+    }
+
     pub fn from_json_str(input: &str) -> Result<Self, JsonError> {
         let root = parse_json(input)?;
         let object = root
