@@ -1,0 +1,9 @@
+[workspace]
+members = [
+  "crates/core-contracts",
+  "crates/router-core",
+  "crates/terminal-core",
+  "crates/runtime-core",
+  "crates/cli-app",
+]
+resolver = "2"

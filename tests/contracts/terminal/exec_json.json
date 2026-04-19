@@ -1,0 +1,27 @@
+{
+  "kind": "route",
+  "snapshot_version": "fixture-snapshot-v1",
+  "route": "tool_execution",
+  "intent": "tool_execution",
+  "payload": {
+    "tool_name": "python",
+    "shell": "powershell",
+    "argv": [
+      "python"
+    ]
+  },
+  "evidence": [
+    "tool_name_match:python"
+  ],
+  "confidence": 1.0,
+  "threshold_applied": 0.93,
+  "threshold_source": "intent:execution",
+  "resolver_path": [
+    "normalize_input",
+    "parse_command_shape",
+    "classify_intent",
+    "resolve_local_candidates",
+    "apply_deterministic_rules",
+    "evaluate_confidence"
+  ]
+}

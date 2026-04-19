@@ -275,6 +275,8 @@ pub struct RouteEnvelope {
 
 Add Rust types that can deserialize the exported Python fixtures without losing required fields.
 
+> Technical debt: the current `core-contracts` implementation uses an internal JSON parser instead of `serde` because this workspace environment does not yet have reliable access to external Rust dependencies. Replace the internal parser with `serde`-based deserialization once the Rust workspace can consume external crates consistently.
+
 **Step 4: Run test to verify it passes**
 
 Run: `cargo test -p core-contracts serialization_parity`
